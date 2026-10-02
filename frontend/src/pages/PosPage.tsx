@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MenuSection } from "../components/menu/MenuSection";
 import { OrderPanel } from "../components/orders/OrderPanel";
 import { TableSection } from "../components/tables/TableSection";
+import { SalesHistorySection } from "../components/sales/SalesHistorySection";
 import { menuService } from "../services/menuService";
 import { categoryService } from "../services/categoryService";
 import { orderService } from "../services/orderService";
@@ -72,14 +73,39 @@ export function PosPage({ section, onError }: Props) {
   };
 
   const openTable = async (table: RestaurantTable) => {
+    if (selectedTable?.id === table.id) {
+      setSelectedTable(null);
+      setSelectedOrder(null);
+      return;
+    }
+
     try {
-      const existing = orders.find(
+      const [currentTables, currentOrders] = await Promise.all([
+        tableService.list(),
+        orderService.list(),
+      ]);
+      setTables(currentTables);
+      setOrders(currentOrders);
+
+      const currentTable = currentTables.find((item) => item.id === table.id) ?? table;
+      const openOrders = currentOrders.filter(
         (order) => order.tableId === table.id && order.status === "OPEN",
       );
-      const order = existing ?? (await orderService.create(table.id));
-      setSelectedTable(table);
+      const ordersWithItems = openOrders.filter((order) => order.items.length > 0);
+      if (ordersWithItems.length > 1) {
+        throw new Error(
+          `Table ${currentTable.tableNumber} has multiple active orders with items. Resolve the duplicate orders before opening the table.`,
+        );
+      }
+      const existing =
+        ordersWithItems[0] ??
+        openOrders.sort((a, b) => a.id - b.id)[0];
+      const order = existing ?? (await orderService.create(currentTable.id));
+      setSelectedTable(currentTable);
       setSelectedOrder(order);
-      if (!existing) await refresh();
+      if (!existing) {
+        await refresh();
+      }
     } catch (error) {
       onError(error);
     }
@@ -207,15 +233,9 @@ export function PosPage({ section, onError }: Props) {
         }}
       />
     );
-  if (section === "Sales History")
-    return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-        <h2 className="text-2xl font-bold">Sales History</h2>
-        <p className="mt-2 text-sm text-slate-500">
-          Completed orders will remain available here in a later milestone.
-        </p>
-      </div>
-    );
+  if (section === "Sales History") {
+    return <SalesHistorySection onError={onError} />;
+  }
 
   return (
     <>

@@ -21,7 +21,7 @@ export function CheckoutPanel({ order, onCheckout }: Props) {
   const change = validAmount ? amount - order.total : 0;
   const validation = useMemo(() => {
     if (!order.items.length) return "Add at least one item before checkout.";
-    if (!paymentMethod) return "Select Cash or KBZ Pay.";
+        if (!paymentMethod) return "Select Cash or KBZ Pay.";
     if (!validAmount) return "Enter a valid amount paid.";
     if (amount < order.total) return "Amount paid must cover the order total.";
     return "";
@@ -29,6 +29,7 @@ export function CheckoutPanel({ order, onCheckout }: Props) {
 
   const submit = async () => {
     if (validation) return;
+      if (!window.confirm(`Complete Order #${order.id} for ${order.total.toLocaleString()} MMK using ${paymentMethod === "KBZ_PAY" ? "KBZ Pay" : "Cash"}?`)) return;
     await onCheckout(order, paymentMethod, amount);
     setPaymentMethod("CASH");
     setAmountPaid("");
@@ -46,7 +47,7 @@ export function CheckoutPanel({ order, onCheckout }: Props) {
           className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"
         >
           <option value="CASH">Cash</option>
-          <option value="E_WALLET">KBZ Pay</option>
+          <option value="KBZ_PAY">KBZ Pay</option>
         </select>
       </label>
       <label className="mt-2 block text-xs font-semibold text-slate-500">

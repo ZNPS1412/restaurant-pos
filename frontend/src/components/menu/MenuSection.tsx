@@ -118,25 +118,25 @@ export function MenuSection({
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+      <div className="overflow-hidden rounded-2xl border border-slate-200">
         {shown.map((menu) => (
           <article
             key={menu.id}
-            className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
+            className="flex flex-col gap-3 border-b border-slate-100 bg-white px-4 py-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
           >
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-              {menu.category.name}
-            </p>
-            <h3
-              lang="my"
-              className="mt-5 min-h-12 break-words text-lg font-bold"
-            >
-              {menu.name}
-            </h3>
-            <p className="mt-3 font-bold text-emerald-700">
-              {menu.price.toLocaleString()} MMK
-            </p>
-            <div className="mt-4 flex gap-2">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                {menu.category.name}
+              </p>
+              <h3 lang="my" className="break-words text-base font-bold text-slate-900">
+                {menu.name}
+              </h3>
+            </div>
+            <div className="flex items-center justify-between gap-5 sm:justify-end">
+              <p className="whitespace-nowrap font-bold text-emerald-700">
+                {menu.price.toLocaleString()} MMK
+              </p>
+              <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => start(menu)}
@@ -151,6 +151,7 @@ export function MenuSection({
               >
                 Delete
               </button>
+              </div>
             </div>
           </article>
         ))}

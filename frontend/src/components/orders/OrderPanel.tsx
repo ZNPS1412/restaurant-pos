@@ -98,20 +98,19 @@ export function OrderPanel({
         <aside className="rounded-2xl bg-slate-50 p-4">
           <h3 className="mb-3 font-bold">Current order</h3>
           {order.items.map((item) => (
-            <div
-              key={item.id}
-              className="border-b border-slate-200 py-3 last:border-0"
-            >
-              <div className="flex justify-between gap-3">
-                <span className="font-semibold">
+            <div key={item.id} className="grid gap-2 border-b border-slate-200 py-3 last:border-0 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4">
+              <div className="min-w-0">
+                <span className="break-words font-semibold">
                   {menus.find((m) => m.id === item.menuId)?.name ?? "Menu item"}
                 </span>
-                <strong>{item.subtotal.toLocaleString()}</strong>
+                <p className="mt-1 text-xs text-slate-500">
+                  {item.unitPrice.toLocaleString()} MMK each
+                </p>
               </div>
-              <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
-                <span>Unit {item.unitPrice.toLocaleString()} MMK</span>
+              <strong className="whitespace-nowrap text-sm">{item.subtotal.toLocaleString()} MMK</strong>
+              <div className="flex items-center justify-between gap-4 sm:justify-end">
                 {active && (
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 text-xs text-slate-500">
                     <button
                       type="button"
                       onClick={() => {
