@@ -23,7 +23,8 @@ export function PosPage({ section, onError }: Props) {
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(
     null,
   );
-  const [category, setCategory] = useState("All");
+  // Empty string = "not yet chosen"; default is set once categories load.
+  const [category, setCategory] = useState("");
 
   const refresh = async () => {
     const [menuItems, restaurantTables, currentOrders, currentCategories] = await Promise.all([
@@ -60,6 +61,13 @@ export function PosPage({ section, onError }: Props) {
       active = false;
     };
   }, [onError]);
+
+  // Default to the first category once categories load; fall back if selected is deleted.
+  useEffect(() => {
+    if (categories.length === 0) return;
+    const exists = categories.some((c) => c.name === category);
+    if (!exists) setCategory(categories[0].name);
+  }, [categories, category]);
 
   const updateOrder = (order: Order) => {
     setSelectedOrder(order);

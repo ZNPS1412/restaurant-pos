@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { MenuItem } from "../../types/menu";
 import type { Category } from "../../types/category";
 import type { Order } from "../../types/order";
@@ -31,18 +31,23 @@ export function OrderPanel({
   onCheckout,
 }: Props) {
   const active = order.status === "OPEN";
-  const [category, setCategory] = useState("All");
-  const visibleMenus = category === "All"
-    ? menus
-    : menus.filter((menu) => menu.category.name === category);
+  // Empty string = not yet chosen; defaulted to first category via useEffect.
+  const [category, setCategory] = useState("");
+  // Default to the first category on mount / when categories change; fallback if deleted.
+  useEffect(() => {
+    if (categories.length === 0) return;
+    const exists = categories.some((c) => c.name === category);
+    if (!exists) setCategory(categories[0].name);
+  }, [categories, category]);
+  const visibleMenus = menus.filter((menu) => menu.category.name === category);
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-bold tracking-[.2em] text-emerald-700">
             {active ? "ACTIVE ORDER" : "COMPLETED ORDER"}
           </p>
-          <h2 className="mt-1 text-2xl font-bold">
+          <h2 className="mt-1 break-words text-2xl font-bold">
             Order #{order.id} <span className="text-slate-400">·</span> Table{" "}
             {table.tableNumber}
           </h2>
@@ -65,33 +70,41 @@ export function OrderPanel({
         )}
       </div>
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div>
+        <div className="min-w-0">
           {active && (
             <>
-              <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-                {["All", ...categories.map((item) => item.name)].map((item) => (
-                  <button type="button" key={item} onClick={() => setCategory(item)} className={`whitespace-nowrap rounded-full px-3 py-2 text-xs font-bold ${category === item ? "bg-emerald-700 text-white" : "border border-slate-200 text-slate-600"}`}>
-                    {item}
-                  </button>
-                ))}
-              </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {visibleMenus.map((menu) => (
-                <button
-                  type="button"
-                  key={menu.id}
-                  onClick={() => onAdd(menu.id)}
-                  className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50"
-                >
-                  <p lang="my" className="min-h-12 font-bold">
-                    {menu.name}
-                  </p>
-                  <p className="mt-2 text-sm font-bold text-emerald-700">
-                    {menu.price.toLocaleString()} MMK
-                  </p>
-                </button>
-              ))}
-              </div>
+              {categories.length === 0 ? (
+                <p className="py-6 text-center text-sm text-slate-400">No categories yet. Add categories in the Menu page.</p>
+              ) : (
+                <>
+                  <div className="mb-3 flex gap-2 overflow-x-auto pb-1 flex-nowrap">
+                    {categories.map((item) => (
+                      <button type="button" key={item.id} onClick={() => setCategory(item.name)} className={`whitespace-nowrap rounded-full px-3 py-2 text-xs font-bold ${category === item.name ? "bg-emerald-700 text-white" : "border border-slate-200 text-slate-600"}`}>
+                        {item.name}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {visibleMenus.length === 0 ? (
+                    <p className="col-span-full py-6 text-center text-sm text-slate-400">No items in this category.</p>
+                  ) : visibleMenus.map((menu) => (
+                    <button
+                      type="button"
+                      key={menu.id}
+                      onClick={() => onAdd(menu.id)}
+                      className="min-w-0 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50"
+                    >
+                      <p lang="my" className="min-h-12 break-words font-bold">
+                        {menu.name}
+                      </p>
+                      <p className="mt-2 text-sm font-bold text-emerald-700">
+                        {menu.price.toLocaleString()} MMK
+                      </p>
+                    </button>
+                  ))}
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>

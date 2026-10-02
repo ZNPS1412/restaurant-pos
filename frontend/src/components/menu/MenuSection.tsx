@@ -26,9 +26,8 @@ export function MenuSection({
 }: Props) {
   const [editing, setEditing] = useState<number | null>(null);
   const [form, setForm] = useState({ name: "", categoryId: "", price: "" });
-  const cats = ["All", ...categories.map((item) => item.name)];
-  const shown =
-    category === "All" ? menus : menus.filter((m) => m.category.name === category);
+  const cats = categories.map((item) => item.name);
+  const shown = menus.filter((m) => m.category.name === category);
   const start = (m?: MenuItem) => {
     setEditing(m?.id ?? 0);
     setForm({
@@ -69,13 +68,13 @@ export function MenuSection({
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="Name"
-            className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-500"
+            className="min-w-0 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-500"
           />
           <select
             required
             value={form.categoryId}
             onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-            className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-500"
+            className="min-w-0 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-500"
           >
             <option value="">Category</option>
             {categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
@@ -87,7 +86,7 @@ export function MenuSection({
             value={form.price}
             onChange={(e) => setForm({ ...form, price: e.target.value })}
             placeholder="Price"
-            className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-500"
+            className="min-w-0 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-500"
           />
           <button className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white">
             {editing ? "Save" : "Add item"}
@@ -106,20 +105,28 @@ export function MenuSection({
           )}
         </form>
       </div>
-      <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
-        {cats.map((c) => (
-          <button
-            type="button"
-            key={c}
-            onClick={() => onCategory(c)}
-            className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold ${category === c ? "bg-emerald-700 text-white" : "border border-slate-200 text-slate-600 hover:border-emerald-500"}`}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
+      {cats.length === 0 ? (
+        <p className="mb-5 py-6 text-center text-sm text-slate-400">No categories yet. Add a category below to get started.</p>
+      ) : (
+        <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+          {categories.map((cat) => (
+            <button
+              type="button"
+              key={cat.id}
+              onClick={() => onCategory(cat.name)}
+              className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold ${category === cat.name ? "bg-emerald-700 text-white" : "border border-slate-200 text-slate-600 hover:border-emerald-500"}`}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="overflow-hidden rounded-2xl border border-slate-200">
-        {shown.map((menu) => (
+        {shown.length === 0 ? (
+          <p className="py-8 text-center text-sm text-slate-400">
+            {cats.length === 0 ? "Add a category first, then add menu items." : "No items in this category."}
+          </p>
+        ) : shown.map((menu) => (
           <article
             key={menu.id}
             className="flex flex-col gap-3 border-b border-slate-100 bg-white px-4 py-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
@@ -165,7 +172,7 @@ function CategoryManager({ categories, onSave, onDelete }: { categories: Categor
   const [name, setName] = useState("");
   const [editing, setEditing] = useState<number | null>(null);
   return <div className="mt-7 border-t border-slate-200 pt-5">
-    <div className="mb-3 flex items-center justify-between"><h3 className="font-bold">Categories</h3><form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); if (!name.trim()) return; onSave({ id: editing ?? 0, name: name.trim() }); setName(""); setEditing(null); }}><input value={name} onChange={(event) => setName(event.target.value)} placeholder="Category name" className="w-36 rounded-xl border border-slate-200 px-3 py-2 text-sm" /><button className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white">{editing ? "Save" : "Add"}</button></form></div>
+    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h3 className="font-bold">Categories</h3><form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); if (!name.trim()) return; onSave({ id: editing ?? 0, name: name.trim() }); setName(""); setEditing(null); }}><input value={name} onChange={(event) => setName(event.target.value)} placeholder="Category name" className="min-w-0 w-36 rounded-xl border border-slate-200 px-3 py-2 text-sm" /><button className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white">{editing ? "Save" : "Add"}</button></form></div>
     <div className="flex flex-wrap gap-2">{categories.map((item) => <span key={item.id} className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-2 text-sm"><button type="button" onClick={() => { setEditing(item.id); setName(item.name); }}>{item.name}</button><button type="button" onClick={() => { if (window.confirm(`Are you sure you want to delete category '${item.name}'?`)) onDelete(item.id); }} className="font-bold text-rose-600">×</button></span>)}</div>
   </div>;
 }
