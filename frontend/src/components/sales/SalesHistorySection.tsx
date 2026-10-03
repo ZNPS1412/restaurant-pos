@@ -54,38 +54,6 @@ export function SalesHistorySection({ onError }: { onError: (error: unknown) => 
 
   const visibleHistory = rangeReady ? history : { orders: [], summary: { orderCount: 0, totalSales: 0, averageOrder: 0 } };
   const summary = visibleHistory.summary;
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editMethod, setEditMethod] = useState("CASH");
-  const [editAmount, setEditAmount] = useState("");
-
-  const reload = async () => {
-    if (!range) return;
-    const next = await salesHistoryService.list(range.from.toISOString(), range.to.toISOString());
-    setHistory(next);
-  };
-
-  const saveEdit = async (id: number, total: number) => {
-    const amount = Number(editAmount);
-    if (!Number.isFinite(amount) || amount < total) return;
-    try {
-      await salesHistoryService.update(id, editMethod, amount);
-      setEditingId(null);
-      await reload();
-    } catch (error) {
-      onError(error);
-    }
-  };
-
-  const deleteSale = async (id: number) => {
-    if (!window.confirm("Delete this completed sale? This permanently removes it from Sales History.")) return;
-    try {
-      await salesHistoryService.remove(id);
-      await reload();
-    } catch (error) {
-      onError(error);
-    }
-  };
-
   return <section className="space-y-6">
     <div><p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-700">Completed sales</p><h2 className="mt-1 text-2xl font-black">Sales History</h2></div>
     <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -96,14 +64,10 @@ export function SalesHistorySection({ onError }: { onError: (error: unknown) => 
     </div>
     <div><h3 className="mb-3 text-lg font-black">Sales Summary</h3><div className="grid gap-3 sm:grid-cols-3"><div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-sm text-slate-500">Orders</p><p className="mt-1 text-2xl font-black">{summary.orderCount}</p></div><div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-sm text-slate-500">Total Sales</p><p className="mt-1 text-2xl font-black">{money(summary.totalSales)}</p></div><div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-sm text-slate-500">Average Order</p><p className="mt-1 text-2xl font-black">{money(summary.averageOrder)}</p></div></div></div>
     <div><h3 className="mb-3 text-lg font-black">Completed Sales</h3><div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      {visibleHistory.orders.map((sale) => editingId === sale.id ? (
-        <div key={sale.id} className="border-b border-slate-100 p-4 last:border-0">
-          <div className="flex flex-wrap items-center gap-3 text-sm"><strong>Order #{sale.id}</strong><span>{money(sale.total)}</span><select value={editMethod} onChange={(event) => setEditMethod(event.target.value)} className="rounded-lg border border-slate-200 px-2 py-1"><option value="CASH">Cash</option><option value="KBZ_PAY">KBZ Pay</option></select><input type="number" min={sale.total} value={editAmount} onChange={(event) => setEditAmount(event.target.value)} className="w-32 rounded-lg border border-slate-200 px-2 py-1" /><button type="button" onClick={() => saveEdit(sale.id, sale.total)} className="font-bold text-emerald-700">Save</button><button type="button" onClick={() => setEditingId(null)} className="font-bold text-slate-500">Cancel</button></div>
-        </div>
-      ) : (
+      {visibleHistory.orders.map((sale) => (
         <div key={sale.id} className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm"><strong>#{sale.id}</strong><span>Table {sale.tableNumber ?? "—"}</span><span className="text-slate-500">{new Date(sale.completedAt).toLocaleString()}</span></div>
-          <div className="flex flex-wrap items-center gap-4 text-sm"><strong>{money(sale.total)}</strong><span>{sale.paymentMethod === "KBZ_PAY" || sale.paymentMethod === "E_WALLET" ? "KBZ Pay" : "Cash"}</span><button type="button" onClick={() => { setEditingId(sale.id); setEditMethod(sale.paymentMethod === "KBZ_PAY" || sale.paymentMethod === "E_WALLET" ? "KBZ_PAY" : "CASH"); setEditAmount(String(sale.amountPaid)); }} className="font-bold text-slate-600">Edit</button><button type="button" onClick={() => deleteSale(sale.id)} className="font-bold text-rose-600">Delete</button></div>
+          <div className="flex flex-wrap items-center gap-4 text-sm"><strong>{money(sale.total)}</strong><span className="w-16 text-left">{sale.paymentMethod === "KBZ_PAY" || sale.paymentMethod === "E_WALLET" ? "KBZ Pay" : "Cash"}</span></div>
         </div>
       ))}
       {!visibleHistory.orders.length && <p className="p-8 text-center text-sm text-slate-500">{rangeReady ? "No completed sales for this period." : "Select both dates to view completed sales."}</p>}

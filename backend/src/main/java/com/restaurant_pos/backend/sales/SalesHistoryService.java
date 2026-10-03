@@ -35,7 +35,7 @@ public class SalesHistoryService {
     @Transactional
     public HistoryResponse findCompleted(Instant from, Instant to) {
         List<Order> completed = orders
-                .findByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtDesc(
+                .findByStatusAndUpdatedAtGreaterThanEqualAndUpdatedAtLessThanOrderByUpdatedAtDesc(
                         OrderStatus.COMPLETED, from, to);
         Map<Long, Menu> menuById = menus.findAllById(completed.stream()
                         .flatMap(order -> order.getItems().stream())

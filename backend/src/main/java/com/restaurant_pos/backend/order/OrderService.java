@@ -5,6 +5,10 @@ import com.restaurant_pos.backend.orderitem.OrderItem;
 import com.restaurant_pos.backend.table.*;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import com.restaurant_pos.backend.websocket.WebSocketBroadcaster;
+import com.restaurant_pos.backend.websocket.WebSocketEvent;
 
 import java.math.*;
 import java.util.*;
@@ -14,11 +18,14 @@ public class OrderService {
     private final OrderRepository orders;
     private final RestaurantTableRepository tables;
     private final MenuRepository menus;
+    private final WebSocketBroadcaster broadcaster;
 
-    public OrderService(OrderRepository o, RestaurantTableRepository t, MenuRepository m) {
+    public OrderService(OrderRepository o, RestaurantTableRepository t, MenuRepository m,
+                        WebSocketBroadcaster b) {
         orders = o;
         tables = t;
         menus = m;
+        broadcaster = b;
     }
 
     public List<Order> all() {
@@ -37,7 +44,9 @@ public class OrderService {
         o.setTableId(tableId);
         t.setStatus(TableStatus.AVAILABLE);
         tables.save(t);
-        return orders.save(o);
+        Order saved = orders.save(o);
+        notifyTablesChangedAfterCommit();
+        return saved;
     }
 
     @Transactional
@@ -56,7 +65,9 @@ public class OrderService {
         i.setQuantity((i.getQuantity() == null ? 0 : i.getQuantity()) + quantity);
         recalc(o);
         syncTable(o);
-        return orders.save(o);
+        Order saved = orders.save(o);
+        notifyTablesChangedAfterCommit();
+        return saved;
     }
 
     @Transactional
@@ -67,7 +78,9 @@ public class OrderService {
         else i.setQuantity(quantity);
         recalc(o);
         syncTable(o);
-        return orders.save(o);
+        Order saved = orders.save(o);
+        notifyTablesChangedAfterCommit();
+        return saved;
     }
 
     @Transactional
@@ -76,7 +89,9 @@ public class OrderService {
         o.getItems().remove(item(o, itemId));
         recalc(o);
         syncTable(o);
-        return orders.save(o);
+        Order saved = orders.save(o);
+        notifyTablesChangedAfterCommit();
+        return saved;
     }
 
     @Transactional
@@ -90,7 +105,9 @@ public class OrderService {
         o.setTableId(targetId);
         tables.save(from);
         tables.save(to);
-        return orders.save(o);
+        Order saved = orders.save(o);
+        notifyTablesChangedAfterCommit();
+        return saved;
     }
 
     @Transactional
@@ -107,7 +124,23 @@ public class OrderService {
         o.setStatus(OrderStatus.COMPLETED);
         t.setStatus(TableStatus.AVAILABLE);
         tables.save(t);
-        return orders.save(o);
+        Order saved = orders.save(o);
+        notifyTablesChangedAfterCommit();
+        return saved;
+    }
+
+    private void notifyTablesChangedAfterCommit() {
+        Runnable notification = () -> broadcaster.broadcast(new WebSocketEvent("TABLES_CHANGED"));
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    notification.run();
+                }
+            });
+        } else {
+            notification.run();
+        }
     }
 
     private void syncTable(Order o) {

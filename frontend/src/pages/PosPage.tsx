@@ -7,6 +7,7 @@ import { menuService } from "../services/menuService";
 import { categoryService } from "../services/categoryService";
 import { orderService } from "../services/orderService";
 import { tableService } from "../services/tableService";
+import { websocketService } from "../services/websocketService";
 import type { MenuItem } from "../types/menu";
 import type { Category } from "../types/category";
 import type { Order } from "../types/order";
@@ -25,6 +26,8 @@ export function PosPage({ section, onError }: Props) {
   );
   // Empty string = "not yet chosen"; default is set once categories load.
   const [category, setCategory] = useState("");
+  const selectedOrderId = selectedOrder?.id;
+  const selectedTableId = selectedTable?.id;
 
   const refresh = async () => {
     const [menuItems, restaurantTables, currentOrders, currentCategories] = await Promise.all([
@@ -61,6 +64,36 @@ export function PosPage({ section, onError }: Props) {
       active = false;
     };
   }, [onError]);
+
+  useEffect(() => {
+    return websocketService.subscribe((event) => {
+      if (event.type !== "TABLES_CHANGED") return;
+
+      Promise.all([tableService.list(), orderService.list()])
+        .then(([currentTables, currentOrders]) => {
+          setTables(currentTables);
+          setOrders(currentOrders);
+          if (selectedOrderId !== undefined) {
+            const refreshedOrder = currentOrders.find(
+              (order) => order.id === selectedOrderId,
+            );
+            setSelectedOrder(refreshedOrder ?? null);
+            setSelectedTable(
+              refreshedOrder
+                ? currentTables.find(
+                    (table) =>
+                      table.id ===
+                      (refreshedOrder.status === "OPEN"
+                        ? refreshedOrder.tableId
+                        : selectedTableId),
+                  ) ?? null
+                : null,
+            );
+          }
+        })
+        .catch(onError);
+    });
+  }, [onError, selectedOrderId, selectedTableId]);
 
   // Default to the first category once categories load; fall back if selected is deleted.
   useEffect(() => {
