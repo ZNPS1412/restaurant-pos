@@ -77,7 +77,7 @@ export function OrderPanel({
                 <p className="py-6 text-center text-sm text-slate-400">No categories yet. Add categories in the Menu page.</p>
               ) : (
                 <>
-                  <div className="mb-3 flex gap-2 overflow-x-auto pb-1 flex-nowrap">
+                  <div className="category-scroll mb-3 flex gap-2 overflow-x-auto pb-1 flex-nowrap">
                     {categories.map((item) => (
                       <button type="button" key={item.id} onClick={() => setCategory(item.name)} className={`whitespace-nowrap rounded-full px-3 py-2 text-xs font-bold ${category === item.name ? "bg-emerald-700 text-white" : "border border-slate-200 text-slate-600"}`}>
                         {item.name}

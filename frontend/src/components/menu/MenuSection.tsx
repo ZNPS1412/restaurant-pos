@@ -108,7 +108,7 @@ export function MenuSection({
       {cats.length === 0 ? (
         <p className="mb-5 py-6 text-center text-sm text-slate-400">No categories yet. Add a category below to get started.</p>
       ) : (
-        <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+        <div className="category-scroll mb-5 flex gap-2 overflow-x-auto pb-1">
           {categories.map((cat) => (
             <button
               type="button"

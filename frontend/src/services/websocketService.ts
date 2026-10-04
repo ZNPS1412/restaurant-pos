@@ -9,8 +9,16 @@ const defaultReconnectDelay = 3000;
 function getWebSocketUrl(): string {
   const configuredApiUrl = import.meta.env.VITE_API_URL as string | undefined;
   const apiUrl = configuredApiUrl ?? "http://localhost:8080/api";
-  const url = new URL(apiUrl);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  const url = new URL(apiUrl, window.location.origin);
+
+  if (!configuredApiUrl || configuredApiUrl.startsWith("/")) {
+    url.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    url.hostname = window.location.hostname;
+    url.port = window.location.port;
+  } else {
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  }
+
   url.pathname = "/ws";
   url.search = "";
   return url.toString();

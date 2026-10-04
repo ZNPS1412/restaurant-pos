@@ -44,7 +44,7 @@ export function TableCard({ table, order, onOpen, onDelete }: Props) {
               onDelete();
             }
           }}
-          className="mt-4 w-full border-t border-slate-100 pt-3 text-left text-xs font-semibold text-rose-600"
+          className="mt-3 w-full border-t border-slate-100 pt-2 text-left text-[11px] font-medium text-rose-600"
         >
           Delete table
         </button>

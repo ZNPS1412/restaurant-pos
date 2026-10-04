@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
+.category-scroll {
+  scrollbar-width: auto;
+  scrollbar-color: #94a3b8 transparent;
+}
+
+.category-scroll::-webkit-scrollbar {
+  display: block;
+  height: 8px;
+}
+
+.category-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.category-scroll::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 9999px;
+}
+
 :root {
   font-family:
     Inter,
