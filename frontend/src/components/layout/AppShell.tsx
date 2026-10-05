@@ -35,7 +35,7 @@ export function AppShell({ children, section, onSectionChange }: Props) {
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-8">
           <div>
             <p className="text-[10px] font-bold tracking-[.2em] text-emerald-700">
-              RESTAURANT FLOOR
+              JOKER
             </p>
             <h1 className="text-lg font-bold">{section}</h1>
           </div>

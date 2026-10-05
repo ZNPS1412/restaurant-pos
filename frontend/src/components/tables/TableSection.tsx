@@ -25,7 +25,7 @@ export function TableSection({
             TABLES
           </p>
           <h2 className="mt-1 text-3xl font-bold tracking-tight">
-            Restaurant floor
+            JOKER Restaurant floor
           </h2>
           <p className="mt-1 text-sm text-slate-500">
             Open an available table to start an order.
