@@ -40,6 +40,7 @@ export function OrderPanel({
     if (!exists) setCategory(categories[0].name);
   }, [categories, category]);
   const visibleMenus = menus.filter((menu) => menu.category.name === category);
+  const orderedMenuIds = new Set(order.items.map((item) => item.menuId));
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
@@ -92,12 +93,12 @@ export function OrderPanel({
                       type="button"
                       key={menu.id}
                       onClick={() => onAdd(menu.id)}
-                      className="min-w-0 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50"
+                      className={`min-w-0 rounded-2xl border p-4 text-left transition ${orderedMenuIds.has(menu.id) ? "border-rose-300 bg-rose-100 hover:border-rose-400 hover:bg-rose-200" : "border-slate-100 bg-slate-50 hover:border-emerald-300 hover:bg-emerald-50"}`}
                     >
                       <p lang="my" className="min-h-12 break-words font-bold">
                         {menu.name}
                       </p>
-                      <p className="mt-2 text-sm font-bold text-emerald-700">
+                      <p className={`mt-2 text-sm font-bold ${orderedMenuIds.has(menu.id) ? "text-rose-700" : "text-emerald-700"}`}>
                         {menu.price.toLocaleString()} MMK
                       </p>
                     </button>
@@ -111,7 +112,7 @@ export function OrderPanel({
         <aside className="rounded-2xl bg-slate-50 p-4">
           <h3 className="mb-3 font-bold">Current order</h3>
           {order.items.map((item) => (
-            <div key={item.id} className="grid gap-2 border-b border-slate-200 py-3 last:border-0 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4">
+            <div key={item.id} className="grid gap-2 rounded-xl border-b border-rose-200 bg-rose-100 px-3 py-3 last:border-0 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4">
               <div className="min-w-0">
                 <span className="break-words font-semibold">
                   {menus.find((m) => m.id === item.menuId)?.name ?? "Menu item"}
