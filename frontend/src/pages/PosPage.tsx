@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { MenuSection } from "../components/menu/MenuSection";
 import { OrderPanel } from "../components/orders/OrderPanel";
 import { TableSection } from "../components/tables/TableSection";
@@ -95,12 +95,9 @@ export function PosPage({ section, onError }: Props) {
     });
   }, [onError, selectedOrderId, selectedTableId]);
 
-  // Default to the first category once categories load; fall back if selected is deleted.
-  useEffect(() => {
-    if (categories.length === 0) return;
-    const exists = categories.some((c) => c.name === category);
-    if (!exists) setCategory(categories[0].name);
-  }, [categories, category]);
+  const effectiveCategory = categories.some((item) => item.name === category)
+    ? category
+    : categories[0]?.name ?? "";
 
   const updateOrder = (order: Order) => {
     setSelectedOrder(order);
@@ -176,9 +173,18 @@ export function PosPage({ section, onError }: Props) {
 
   const transfer = async (tableId: number) => {
     if (!selectedOrder) return;
+    const targetTable = tables.find((table) => table.id === tableId);
+    if (
+      targetTable?.status === "OCCUPIED" &&
+      !window.confirm(
+        `Swap the active orders between Table ${activeTable?.tableNumber} and Table ${targetTable.tableNumber}?`,
+      )
+    ) {
+      return;
+    }
     try {
       updateOrder(await orderService.transfer(selectedOrder.id, tableId));
-      setSelectedTable(tables.find((table) => table.id === tableId) ?? null);
+      setSelectedTable(targetTable ?? null);
       await refresh();
     } catch (error) {
       onError(error);
@@ -201,14 +207,11 @@ export function PosPage({ section, onError }: Props) {
     }
   };
 
-  const activeTable = useMemo(
-    () =>
-      selectedTable ??
-      (selectedOrder
-        ? tables.find((table) => table.id === selectedOrder.tableId)
-        : null),
-    [selectedTable, selectedOrder, tables],
-  );
+  const activeTable =
+    selectedTable ??
+    (selectedOrder
+      ? tables.find((table) => table.id === selectedOrder.tableId)
+      : null);
 
   const addTable = async (tableNumber: number) => {
     try {
@@ -257,7 +260,7 @@ export function PosPage({ section, onError }: Props) {
       <MenuSection
         menus={menus}
         categories={categories}
-        category={category}
+        category={effectiveCategory}
         onCategory={setCategory}
         onAdd={saveMenu}
         onSave={saveMenu}

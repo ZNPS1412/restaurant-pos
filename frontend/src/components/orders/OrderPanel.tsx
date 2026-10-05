@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { MenuItem } from "../../types/menu";
 import type { Category } from "../../types/category";
 import type { Order } from "../../types/order";
@@ -33,13 +33,12 @@ export function OrderPanel({
   const active = order.status === "OPEN";
   // Empty string = not yet chosen; defaulted to first category via useEffect.
   const [category, setCategory] = useState("");
-  // Default to the first category on mount / when categories change; fallback if deleted.
-  useEffect(() => {
-    if (categories.length === 0) return;
-    const exists = categories.some((c) => c.name === category);
-    if (!exists) setCategory(categories[0].name);
-  }, [categories, category]);
-  const visibleMenus = menus.filter((menu) => menu.category.name === category);
+  const effectiveCategory = categories.some((c) => c.name === category)
+    ? category
+    : categories[0]?.name ?? "";
+  const visibleMenus = menus.filter(
+    (menu) => menu.category.name === effectiveCategory,
+  );
   const orderedMenuIds = new Set(order.items.map((item) => item.menuId));
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
@@ -61,10 +60,10 @@ export function OrderPanel({
           >
             <option value={table.id}>Change table...</option>
             {tables
-              .filter((t) => t.status === "AVAILABLE")
+              .filter((t) => t.id !== table.id)
               .map((t) => (
                 <option key={t.id} value={t.id}>
-                  Table {t.tableNumber}
+                  Table {t.tableNumber} ({t.status})
                 </option>
               ))}
           </select>
@@ -80,7 +79,7 @@ export function OrderPanel({
                 <>
                   <div className="category-scroll mb-3 flex gap-2 overflow-x-auto pb-1 flex-nowrap">
                     {categories.map((item) => (
-                      <button type="button" key={item.id} onClick={() => setCategory(item.name)} className={`whitespace-nowrap rounded-full px-3 py-2 text-xs font-bold ${category === item.name ? "bg-emerald-700 text-white" : "border border-slate-200 text-slate-600"}`}>
+                      <button type="button" key={item.id} onClick={() => setCategory(item.name)} className={`whitespace-nowrap rounded-full px-3 py-2 text-xs font-bold ${effectiveCategory === item.name ? "bg-emerald-700 text-white" : "border border-slate-200 text-slate-600"}`}>
                         {item.name}
                       </button>
                     ))}

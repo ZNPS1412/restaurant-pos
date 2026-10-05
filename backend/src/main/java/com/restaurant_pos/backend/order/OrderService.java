@@ -99,10 +99,28 @@ public class OrderService {
         Order o = open(id);
         if (o.getTableId().equals(targetId)) throw new IllegalStateException("Choose a different table.");
         RestaurantTable from = table(o.getTableId()), to = table(targetId);
-        if (to.getStatus() != TableStatus.AVAILABLE) throw new IllegalStateException("Destination table is occupied.");
-        from.setStatus(TableStatus.AVAILABLE);
-        to.setStatus(o.getItems().isEmpty() ? TableStatus.AVAILABLE : TableStatus.OCCUPIED);
-        o.setTableId(targetId);
+        List<Order> targetOrders = orders.findByTableIdAndStatus(targetId, OrderStatus.OPEN);
+        if (targetOrders.size() > 1) {
+            throw new IllegalStateException("Destination table has multiple active orders.");
+        }
+
+        Order targetOrder = to.getStatus() == TableStatus.OCCUPIED
+                ? (targetOrders.isEmpty() ? null : targetOrders.get(0))
+                : null;
+        if (to.getStatus() == TableStatus.OCCUPIED && targetOrder == null) {
+            throw new IllegalStateException("Occupied destination has no active order.");
+        }
+        if (targetOrder == null) {
+            from.setStatus(TableStatus.AVAILABLE);
+            to.setStatus(o.getItems().isEmpty() ? TableStatus.AVAILABLE : TableStatus.OCCUPIED);
+            o.setTableId(targetId);
+        } else {
+            targetOrder.setTableId(from.getId());
+            o.setTableId(to.getId());
+            from.setStatus(targetOrder.getItems().isEmpty() ? TableStatus.AVAILABLE : TableStatus.OCCUPIED);
+            to.setStatus(o.getItems().isEmpty() ? TableStatus.AVAILABLE : TableStatus.OCCUPIED);
+            orders.save(targetOrder);
+        }
         tables.save(from);
         tables.save(to);
         Order saved = orders.save(o);
