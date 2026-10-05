@@ -47,7 +47,7 @@ export function OrderPanel({
           <p className="text-xs font-bold tracking-[.2em] text-emerald-700">
             {active ? "ACTIVE ORDER" : "COMPLETED ORDER"}
           </p>
-          <h2 className="mt-1 break-words text-2xl font-bold">
+          <h2 className="mt-1 wrap-break-word text-2xl font-bold">
             Order #{order.id} <span className="text-slate-400">·</span> Table{" "}
             {table.tableNumber}
           </h2>
@@ -94,7 +94,7 @@ export function OrderPanel({
                       onClick={() => onAdd(menu.id)}
                       className={`min-w-0 rounded-2xl border p-4 text-left transition ${orderedMenuIds.has(menu.id) ? "border-rose-300 bg-rose-100 hover:border-rose-400 hover:bg-rose-200" : "border-slate-100 bg-slate-50 hover:border-emerald-300 hover:bg-emerald-50"}`}
                     >
-                      <p lang="my" className="min-h-12 break-words font-bold">
+                      <p lang="my" className="min-h-12 wrap-break-word font-bold">
                         {menu.name}
                       </p>
                       <p className={`mt-2 text-sm font-bold ${orderedMenuIds.has(menu.id) ? "text-rose-700" : "text-emerald-700"}`}>
@@ -113,7 +113,7 @@ export function OrderPanel({
           {order.items.map((item) => (
             <div key={item.id} className="grid gap-2 rounded-xl border-b border-rose-200 bg-rose-100 px-3 py-3 last:border-0 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4">
               <div className="min-w-0">
-                <span className="break-words font-semibold">
+                <span className="wrap-break-word font-semibold">
                   {menus.find((m) => m.id === item.menuId)?.name ?? "Menu item"}
                 </span>
                 <p className="mt-1 text-xs text-slate-500">
