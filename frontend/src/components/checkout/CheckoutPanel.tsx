@@ -7,10 +7,12 @@ type Props = {
     order: Order,
     paymentMethod: string,
     amountPaid: number,
+    selectedItems?: { itemId: number; quantity: number }[],
   ) => Promise<void>;
+  selectedItems?: { itemId: number; quantity: number }[];
 };
 
-export function CheckoutPanel({ order, onCheckout }: Props) {
+export function CheckoutPanel({ order, onCheckout, selectedItems }: Props) {
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [amountPaid, setAmountPaid] = useState("");
   const amount = Number(amountPaid);
@@ -30,7 +32,7 @@ export function CheckoutPanel({ order, onCheckout }: Props) {
   const submit = async () => {
     if (validation) return;
       if (!window.confirm(`Complete Order #${order.id} for ${order.total.toLocaleString()} MMK using ${paymentMethod === "KBZ_PAY" ? "KBZ Pay" : "Cash"}?`)) return;
-    await onCheckout(order, paymentMethod, amount);
+    await onCheckout(order, paymentMethod, amount, selectedItems);
     setPaymentMethod("CASH");
     setAmountPaid("");
   };
@@ -80,7 +82,7 @@ export function CheckoutPanel({ order, onCheckout }: Props) {
         onClick={submit}
         className="mt-4 w-full rounded-xl bg-emerald-700 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300"
       >
-        Complete Sale
+        {selectedItems?.length ? "Complete Selected Sale" : "Complete Sale"}
       </button>
     </div>
   );

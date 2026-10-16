@@ -34,6 +34,15 @@ public class OrderController {
                                   @NotNull @DecimalMin("0.00") BigDecimal amountPaid) {
     }
 
+    public record PartialItemRequest(@NotNull @Positive Long itemId,
+                                     @NotNull @Positive Integer quantity) {
+    }
+
+    public record PartialCheckoutRequest(@NotNull PaymentMethod paymentMethod,
+                                         @NotNull @DecimalMin("0.00") BigDecimal amountPaid,
+                                         @NotNull @Size(min = 1) List<@Valid PartialItemRequest> items) {
+    }
+
     @GetMapping
     public List<Order> all() {
         return service.all();
@@ -73,5 +82,15 @@ public class OrderController {
     @PostMapping("/{id}/checkout")
     public Order checkout(@PathVariable Long id, @Valid @RequestBody CheckoutRequest r) {
         return service.checkout(id, r.paymentMethod(), r.amountPaid());
+    }
+
+    @PostMapping("/{id}/partial-checkout")
+    public Order partialCheckout(@PathVariable Long id,
+                                 @Valid @RequestBody PartialCheckoutRequest r) {
+        Map<Long, Integer> quantities = new HashMap<>();
+        for (PartialItemRequest item : r.items()) {
+            quantities.merge(item.itemId(), item.quantity(), Integer::sum);
+        }
+        return service.partialCheckout(id, r.paymentMethod(), r.amountPaid(), quantities);
     }
 }

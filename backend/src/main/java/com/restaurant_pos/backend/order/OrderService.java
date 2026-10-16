@@ -38,11 +38,13 @@ public class OrderService {
 
     @Transactional
     public Order create(Long tableId) {
-        RestaurantTable t = table(tableId);
+        RestaurantTable t = tableForUpdate(tableId);
+        List<Order> existing = orders.findByTableIdAndStatusForUpdate(tableId, OrderStatus.OPEN);
+        if (existing.size() > 1) throw new IllegalStateException("Table has multiple active orders.");
+        if (!existing.isEmpty()) return existing.get(0);
         if (t.getStatus() != TableStatus.AVAILABLE) throw new IllegalStateException("Table is occupied.");
         Order o = new Order();
         o.setTableId(tableId);
-        t.setStatus(TableStatus.AVAILABLE);
         tables.save(t);
         Order saved = orders.save(o);
         notifyTablesChangedAfterCommit();
@@ -52,7 +54,7 @@ public class OrderService {
     @Transactional
     public Order addItem(Long id, Long menuId, int quantity) {
         if (quantity <= 0) throw new IllegalArgumentException("Quantity must be positive.");
-        Order o = open(id);
+        Order o = openAfterTableLock(id);
         Menu m = menus.findById(menuId).orElseThrow(() -> new IllegalArgumentException("Menu item not found."));
         OrderItem i = o.getItems().stream().filter(x -> x.getMenuId().equals(menuId)).findFirst().orElseGet(() -> {
             OrderItem x = new OrderItem();
@@ -72,7 +74,7 @@ public class OrderService {
 
     @Transactional
     public Order updateItem(Long id, Long itemId, int quantity) {
-        Order o = open(id);
+        Order o = openAfterTableLock(id);
         OrderItem i = item(o, itemId);
         if (quantity <= 0) o.getItems().remove(i);
         else i.setQuantity(quantity);
@@ -85,7 +87,7 @@ public class OrderService {
 
     @Transactional
     public Order removeItem(Long id, Long itemId) {
-        Order o = open(id);
+        Order o = openAfterTableLock(id);
         o.getItems().remove(item(o, itemId));
         recalc(o);
         syncTable(o);
@@ -96,10 +98,26 @@ public class OrderService {
 
     @Transactional
     public Order transfer(Long id, Long targetId) {
-        Order o = open(id);
-        if (o.getTableId().equals(targetId)) throw new IllegalStateException("Choose a different table.");
-        RestaurantTable from = table(o.getTableId()), to = table(targetId);
-        List<Order> targetOrders = orders.findByTableIdAndStatus(targetId, OrderStatus.OPEN);
+        Order current = get(id);
+        if (current.getTableId().equals(targetId)) throw new IllegalStateException("Choose a different table.");
+        Long sourceId = current.getTableId();
+        RestaurantTable from;
+        RestaurantTable to;
+        if (sourceId < targetId) {
+            from = tableForUpdate(sourceId);
+            to = tableForUpdate(targetId);
+        } else {
+            to = tableForUpdate(targetId);
+            from = tableForUpdate(sourceId);
+        }
+        Order o = openForUpdate(id);
+        if (!o.getTableId().equals(sourceId)) {
+            throw new IllegalStateException("Order moved while the transfer was starting. Retry the transfer.");
+        }
+        if (o.getTableId().equals(targetId)) {
+            throw new IllegalStateException("Choose a different table.");
+        }
+        List<Order> targetOrders = orders.findByTableIdAndStatusForUpdate(targetId, OrderStatus.OPEN);
         if (targetOrders.size() > 1) {
             throw new IllegalStateException("Destination table has multiple active orders.");
         }
@@ -115,6 +133,10 @@ public class OrderService {
             to.setStatus(o.getItems().isEmpty() ? TableStatus.AVAILABLE : TableStatus.OCCUPIED);
             o.setTableId(targetId);
         } else {
+            // PostgreSQL unique indexes are immediate. Move both rows to unique
+            // temporary keys before assigning the two occupied tables.
+            orders.moveOrdersToUniqueTemporaryTables(o.getId(), targetOrder.getId());
+            orders.completeOrderSwap(o.getId(), to.getId(), targetOrder.getId(), from.getId());
             targetOrder.setTableId(from.getId());
             o.setTableId(to.getId());
             from.setStatus(targetOrder.getItems().isEmpty() ? TableStatus.AVAILABLE : TableStatus.OCCUPIED);
@@ -130,7 +152,7 @@ public class OrderService {
 
     @Transactional
     public Order checkout(Long id, PaymentMethod method, BigDecimal amountPaid) {
-        Order o = open(id);
+        Order o = openAfterTableLock(id);
         if (method == null) throw new IllegalArgumentException("Payment method is required.");
         if (o.getItems().isEmpty()) throw new IllegalStateException("Cannot checkout an empty order.");
         if (amountPaid == null || amountPaid.compareTo(o.getTotal()) < 0)
@@ -145,6 +167,67 @@ public class OrderService {
         Order saved = orders.save(o);
         notifyTablesChangedAfterCommit();
         return saved;
+    }
+
+    @Transactional
+    public Order partialCheckout(Long id, PaymentMethod method, BigDecimal amountPaid,
+                                 Map<Long, Integer> selectedQuantities) {
+        Order source = openAfterTableLock(id);
+        if (method == null) throw new IllegalArgumentException("Payment method is required.");
+        if (selectedQuantities == null || selectedQuantities.isEmpty()) {
+            throw new IllegalArgumentException("Select at least one item to checkout.");
+        }
+
+        List<OrderItem> selectedItems = new ArrayList<>();
+        for (Map.Entry<Long, Integer> entry : selectedQuantities.entrySet()) {
+            OrderItem sourceItem = item(source, entry.getKey());
+            int quantity = entry.getValue() == null ? 0 : entry.getValue();
+            if (quantity <= 0 || quantity > sourceItem.getQuantity()) {
+                throw new IllegalArgumentException("Selected quantity is invalid.");
+            }
+            OrderItem saleItem = new OrderItem();
+            saleItem.setMenuId(sourceItem.getMenuId());
+            saleItem.setQuantity(quantity);
+            saleItem.setUnitPrice(sourceItem.getUnitPrice());
+            saleItem.setSubtotal(sourceItem.getUnitPrice().multiply(BigDecimal.valueOf(quantity)));
+            selectedItems.add(saleItem);
+        }
+
+        BigDecimal saleTotal = selectedItems.stream()
+                .map(OrderItem::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (amountPaid == null || amountPaid.compareTo(saleTotal) < 0) {
+            throw new IllegalArgumentException("Amount paid is less than the selected sale total.");
+        }
+
+        for (Map.Entry<Long, Integer> entry : selectedQuantities.entrySet()) {
+            OrderItem sourceItem = item(source, entry.getKey());
+            int remaining = sourceItem.getQuantity() - entry.getValue();
+            if (remaining == 0) source.getItems().remove(sourceItem);
+            else sourceItem.setQuantity(remaining);
+        }
+        recalc(source);
+        if (source.getItems().isEmpty()) {
+            throw new IllegalArgumentException("Use full checkout when selling the entire order.");
+        }
+        syncTable(source);
+
+        Order sale = new Order();
+        sale.setTableId(source.getTableId());
+        sale.setStatus(OrderStatus.COMPLETED);
+        sale.setTotal(saleTotal);
+        sale.setPaymentMethod(method);
+        sale.setAmountPaid(amountPaid);
+        sale.setChangeAmount(amountPaid.subtract(saleTotal));
+        selectedItems.forEach(item -> {
+            item.setOrder(sale);
+            sale.getItems().add(item);
+        });
+
+        orders.save(source);
+        orders.save(sale);
+        notifyTablesChangedAfterCommit();
+        return source;
     }
 
     private void notifyTablesChangedAfterCommit() {
@@ -173,8 +256,26 @@ public class OrderService {
         return o;
     }
 
+    private Order openAfterTableLock(Long id) {
+        RestaurantTable table = tables.findByOrderIdForUpdate(id);
+        if (table == null) throw new IllegalArgumentException("Order not found.");
+        return openForUpdate(id);
+    }
+
+    private Order openForUpdate(Long id) {
+        Order o = orders.findByIdForUpdate(id).orElseThrow(() -> new IllegalArgumentException("Order not found."));
+        if (o.getStatus() != OrderStatus.OPEN) throw new IllegalStateException("Order is not open.");
+        return o;
+    }
+
     private RestaurantTable table(Long id) {
         return tables.findById(id).orElseThrow(() -> new IllegalArgumentException("Table not found."));
+    }
+
+    private RestaurantTable tableForUpdate(Long id) {
+        RestaurantTable table = tables.findByIdForUpdate(id);
+        if (table == null) throw new IllegalArgumentException("Table not found.");
+        return table;
     }
 
     private OrderItem item(Order o, Long id) {

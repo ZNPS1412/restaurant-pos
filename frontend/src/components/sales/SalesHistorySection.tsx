@@ -43,6 +43,7 @@ export function SalesHistorySection({ onError }: { onError: (error: unknown) => 
   const [month, setMonth] = useState(today.slice(0, 7));
   const [fromDate, setFromDate] = useState(today);
   const [toDate, setToDate] = useState(today);
+  const [expandedSales, setExpandedSales] = useState<Set<number>>(new Set());
   const [history, setHistory] = useState<SalesHistory>({ orders: [], summary: { orderCount: 0, totalSales: 0, averageOrder: 0 } });
   const range = useMemo(() => rangeFor(period, date, month, fromDate, toDate), [date, fromDate, month, period, toDate]);
   const rangeReady = range !== null;
@@ -65,9 +66,26 @@ export function SalesHistorySection({ onError }: { onError: (error: unknown) => 
     <div><h3 className="mb-3 text-lg font-black">Sales Summary</h3><div className="grid gap-3 sm:grid-cols-3"><div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-sm text-slate-500">Orders</p><p className="mt-1 text-2xl font-black">{summary.orderCount}</p></div><div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-sm text-slate-500">Total Sales</p><p className="mt-1 text-2xl font-black">{money(summary.totalSales)}</p></div><div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-sm text-slate-500">Average Order</p><p className="mt-1 text-2xl font-black">{money(summary.averageOrder)}</p></div></div></div>
     <div><h3 className="mb-3 text-lg font-black">Completed Sales</h3><div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
       {visibleHistory.orders.map((sale) => (
-        <div key={sale.id} className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between">
+        <div key={sale.id} className="border-b border-slate-100 px-4 py-3 last:border-0">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm"><strong>#{sale.id}</strong><span>Table {sale.tableNumber ?? "—"}</span><span className="text-slate-500">{new Date(sale.completedAt).toLocaleString()}</span></div>
-          <div className="flex flex-wrap items-center gap-4 text-sm"><strong>{money(sale.total)}</strong><span className="w-16 text-left">{sale.paymentMethod === "KBZ_PAY" || sale.paymentMethod === "E_WALLET" ? "KBZ Pay" : "Cash"}</span></div>
+          <div className="flex flex-wrap items-center gap-4 text-sm"><strong>{money(sale.total)}</strong><span className="w-16 text-left">{sale.paymentMethod === "KBZ_PAY" || sale.paymentMethod === "E_WALLET" ? "KBZ Pay" : "Cash"}</span><button type="button" className="font-semibold text-emerald-700 hover:text-emerald-800" onClick={() => setExpandedSales((current) => { const next = new Set(current); if (next.has(sale.id)) next.delete(sale.id); else next.add(sale.id); return next; })}>{expandedSales.has(sale.id) ? "See less" : "See more"}</button></div>
+          </div>
+          {expandedSales.has(sale.id) && (
+            <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm">
+              <p className="mb-2 font-bold text-slate-700">Items paid for:</p>
+              <div className="space-y-2">
+                {sale.items.map((item, index) => (
+                  <div key={`${sale.id}-${index}`} className="grid grid-cols-[minmax(0,1fr)_3rem_7rem] items-center gap-1 sm:gap-4">
+                    <span className="min-w-0 wrap-break-word">{item.name}</span>
+                    <span className="text-slate-500">{item.quantity}</span>
+                    <span className="text-right font-semibold">{money(item.subtotal)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex justify-between border-t border-slate-200 pt-3 font-bold"><span>Total</span><span>{money(sale.total)}</span></div>
+            </div>
+          )}
         </div>
       ))}
       {!visibleHistory.orders.length && <p className="p-8 text-center text-sm text-slate-500">{rangeReady ? "No completed sales for this period." : "Select both dates to view completed sales."}</p>}

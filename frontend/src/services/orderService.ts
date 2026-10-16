@@ -27,4 +27,14 @@ export const orderService = {
       method: "POST",
       body: JSON.stringify({ paymentMethod, amountPaid }),
     }),
+  partialCheckout: (
+    id: number,
+    paymentMethod: string,
+    amountPaid: number,
+    items: { itemId: number; quantity: number }[],
+  ) =>
+    request<Order>(`/orders/${id}/partial-checkout`, {
+      method: "POST",
+      body: JSON.stringify({ paymentMethod, amountPaid, items }),
+    }),
 };

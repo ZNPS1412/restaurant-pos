@@ -17,6 +17,7 @@ type Props = {
     order: Order,
     paymentMethod: string,
     amountPaid: number,
+    selectedItems?: { itemId: number; quantity: number }[],
   ) => Promise<void>;
 };
 export function OrderPanel({
@@ -33,6 +34,7 @@ export function OrderPanel({
   const active = order.status === "OPEN";
   // Empty string = not yet chosen; defaulted to first category via useEffect.
   const [category, setCategory] = useState("");
+  const [selectedQuantities, setSelectedQuantities] = useState<Record<number, number>>({});
   const effectiveCategory = categories.some((c) => c.name === category)
     ? category
     : categories[0]?.name ?? "";
@@ -40,6 +42,46 @@ export function OrderPanel({
     (menu) => menu.category.name === effectiveCategory,
   );
   const orderedMenuIds = new Set(order.items.map((item) => item.menuId));
+  const selectedForCheckout = order.items
+    .map((item) => ({ itemId: item.id, quantity: selectedQuantities[item.id] ?? 0 }))
+    .filter((item) => item.quantity > 0);
+  const isFullSelection =
+    selectedForCheckout.length === order.items.length &&
+    selectedForCheckout.every(
+      (selected) =>
+        selected.quantity ===
+        order.items.find((item) => item.id === selected.itemId)?.quantity,
+    );
+  const partialSelection = isFullSelection ? undefined : selectedForCheckout;
+  const checkoutOrder = partialSelection?.length
+    ? {
+        ...order,
+        items: order.items
+          .filter((item) => selectedQuantities[item.id] > 0)
+          .map((item) => ({
+            ...item,
+            quantity: selectedQuantities[item.id],
+            subtotal: item.unitPrice * selectedQuantities[item.id],
+          })),
+        total: order.items.reduce(
+          (total, item) =>
+            total +
+            (selectedQuantities[item.id] > 0
+              ? item.unitPrice * selectedQuantities[item.id]
+              : 0),
+          0,
+        ),
+      }
+    : order;
+  const handleCheckout = async (
+    checkout: Order,
+    paymentMethod: string,
+    amountPaid: number,
+    selectedItems?: { itemId: number; quantity: number }[],
+  ) => {
+    await onCheckout(checkout, paymentMethod, amountPaid, selectedItems);
+    setSelectedQuantities({});
+  };
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
@@ -92,7 +134,7 @@ export function OrderPanel({
                       type="button"
                       key={menu.id}
                       onClick={() => onAdd(menu.id)}
-                      className={`min-w-0 rounded-2xl border p-4 text-left transition ${orderedMenuIds.has(menu.id) ? "border-rose-300 bg-rose-100 hover:border-rose-400 hover:bg-rose-200" : "border-slate-100 bg-slate-50 hover:border-emerald-300 hover:bg-emerald-50"}`}
+                      className={`min-w-0 rounded-2xl border p-4 text-left transition ${orderedMenuIds.has(menu.id) ? "border-rose-300 bg-[#FC4949] hover:border-rose-400 hover:bg-[#FC4949]" : "border-slate-100 bg-slate-50 hover:border-emerald-300 hover:bg-emerald-50"}`}
                     >
                       <p lang="my" className="min-h-12 wrap-break-word font-bold">
                         {menu.name}
@@ -111,14 +153,49 @@ export function OrderPanel({
         <aside className="rounded-2xl bg-slate-50 p-4">
           <h3 className="mb-3 font-bold">Current order</h3>
           {order.items.map((item) => (
-            <div key={item.id} className="grid gap-2 rounded-xl border-b border-rose-200 bg-rose-100 px-3 py-3 last:border-0 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4">
+            <div key={item.id} className="grid gap-2 rounded-xl border-b border-rose-200 bg-[#FC4949] px-3 py-3 last:border-0 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4">
               <div className="min-w-0">
-                <span className="wrap-break-word font-semibold">
+                <label className="flex items-start gap-2 wrap-break-word font-semibold">
+                  {active && (
+                    <input
+                      type="checkbox"
+                      checked={(selectedQuantities[item.id] ?? 0) > 0}
+                      onChange={(event) =>
+                        setSelectedQuantities((current) => ({
+                          ...current,
+                          [item.id]: event.target.checked ? item.quantity : 0,
+                        }))
+                      }
+                      className="mt-1 size-4 accent-emerald-700"
+                      aria-label={`Select ${menus.find((m) => m.id === item.menuId)?.name ?? "item"} for checkout`}
+                    />
+                  )}
                   {menus.find((m) => m.id === item.menuId)?.name ?? "Menu item"}
-                </span>
+                </label>
                 <p className="mt-1 text-xs text-slate-500">
                   {item.unitPrice.toLocaleString()} MMK each
                 </p>
+                {active && (selectedQuantities[item.id] ?? 0) > 0 && (
+                  <label className="mt-2 block text-xs text-slate-500">
+                    Quantity to sell
+                    <input
+                      type="number"
+                      min="1"
+                      max={item.quantity}
+                      value={selectedQuantities[item.id]}
+                      onChange={(event) =>
+                        setSelectedQuantities((current) => ({
+                          ...current,
+                          [item.id]: Math.min(
+                            item.quantity,
+                            Math.max(1, Number(event.target.value) || 1),
+                          ),
+                        }))
+                      }
+                      className="ml-2 w-16 rounded border border-slate-200 bg-white px-2 py-1"
+                    />
+                  </label>
+                )}
               </div>
               <strong className="whitespace-nowrap text-sm">{item.subtotal.toLocaleString()} MMK</strong>
               <div className="flex items-center justify-between gap-4 sm:justify-end">
@@ -160,7 +237,11 @@ export function OrderPanel({
             <span>{order.total.toLocaleString()} MMK</span>
           </div>
           {active ? (
-            <CheckoutPanel order={order} onCheckout={onCheckout} />
+            <CheckoutPanel
+              order={checkoutOrder}
+              selectedItems={partialSelection}
+              onCheckout={handleCheckout}
+            />
           ) : (
             <p className="mt-4 rounded-xl bg-emerald-100 p-3 text-xs font-semibold text-emerald-800">
               COMPLETED · {order.paymentMethod} · Paid{" "}

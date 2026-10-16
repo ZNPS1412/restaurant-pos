@@ -195,10 +195,18 @@ export function PosPage({ section, onError }: Props) {
     order: Order,
     paymentMethod: string,
     amountPaid: number,
+    selectedItems?: { itemId: number; quantity: number }[],
   ) => {
     try {
       updateOrder(
-        await orderService.checkout(order.id, paymentMethod, amountPaid),
+        await (selectedItems?.length
+          ? orderService.partialCheckout(
+              order.id,
+              paymentMethod,
+              amountPaid,
+              selectedItems,
+            )
+          : orderService.checkout(order.id, paymentMethod, amountPaid)),
       );
       await refresh();
     } catch (error) {

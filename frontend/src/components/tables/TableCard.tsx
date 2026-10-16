@@ -10,14 +10,14 @@ export function TableCard({ table, order, onOpen, onDelete }: Props) {
   const available = table.status === "AVAILABLE";
   return (
     <article
-      className={`rounded-2xl border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${available ? "border-emerald-100 bg-white" : "border-amber-200 bg-amber-50/60"}`}
+      className={`rounded-2xl border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${available ? "border-emerald-100 bg-white" : "border-rose-200 bg-[#FC4949]"}`}
     >
       <div className="flex items-start gap-2">
         <button onClick={onOpen} className="min-w-0 flex-1 text-left" type="button">
           <div className="flex items-start justify-between">
             <span className="text-2xl font-bold">{table.tableNumber}</span>
             <span
-              className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${available ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}
+              className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${available ? "bg-emerald-100 text-emerald-800" : "bg-[#FC4949] text-rose-800"}`}
             >
               {table.status}
             </span>
