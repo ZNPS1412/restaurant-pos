@@ -24,7 +24,7 @@ A full-stack point-of-sale application for restaurant operations. It brings menu
 ```text
 ┌────────────────────┐       ┌────────────────────┐       ┌────────────────────┐
 │ React + TypeScript │  API  │ Spring Boot        │       │ PostgreSQL         │
-│ Frontend           │──────▶│ REST + WebSockets  │──────▶│ Persistent storage  │
+│ Frontend           │─────▶│ REST + WebSockets   │─────▶│ Persistent storage │
 └────────────────────┘       └────────────────────┘       └────────────────────┘
           └──────────────── Docker Compose ─────────────────┘
 ```
