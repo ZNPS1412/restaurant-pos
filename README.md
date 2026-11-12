@@ -2,8 +2,6 @@
 
 A full-stack point-of-sale application for restaurant operations. It brings menu and category management, table-based order handling, checkout, and sales history together in a web interface, with live updates supported by WebSockets.
 
-> **Portfolio project** — built to explore a practical full-stack workflow, from a React interface and Spring Boot API to PostgreSQL persistence and Docker-based deployment.
-
 ## At a glance
 
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS
